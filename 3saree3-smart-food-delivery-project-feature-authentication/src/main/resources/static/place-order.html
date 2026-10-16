@@ -1,0 +1,369 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAR3A | Place Order</title>
+    <link rel="stylesheet" href="place-order.css">
+</head>
+
+<body>
+
+<header class="navbar">
+    <a class="logo" href="customer-dashboard.html">
+        <span class="logo-icon">⚡</span> SAR3A
+    </a>
+
+    <nav>
+        <a href="customer-dashboard.html">Dashboard</a>
+        <a href="place-order.html" class="active">Place Order</a>
+    </nav>
+
+    <div class="profile">👤 Customer</div>
+</header>
+
+<main class="container">
+
+    <section class="hero">
+        <div>
+            <p class="eyebrow">SAR3A FOOD DELIVERY</p>
+            <h1>What are you craving today?</h1>
+            <p>Choose your favorites and place your order!</p>
+        </div>
+        <div class="hero-emoji">🍔</div>
+    </section>
+
+    <div class="layout">
+
+        <section class="menu-section">
+            <div class="section-heading">
+                <p class="eyebrow purple-text">EXPLORE THE MENU</p>
+                <h2>Popular Items</h2>
+                <p class="muted">
+                    Demo menu — restaurant data will be connected later.
+                </p>
+            </div>
+
+            <div id="menuContainer" class="menu-grid"></div>
+        </section>
+
+        <aside class="checkout">
+            <h2>🛒 Your Order</h2>
+            <p class="muted">Review your items before checkout.</p>
+
+            <div id="cartContainer" class="cart-container">
+                <p class="empty-cart">Your cart is empty.</p>
+            </div>
+
+            <div class="field">
+                <label for="deliveryAddress">Delivery Address *</label>
+                <textarea id="deliveryAddress"
+                    placeholder="Enter your delivery address"
+                    rows="3"></textarea>
+            </div>
+
+            <div class="field">
+                <label for="deliveryType">Delivery Type *</label>
+                <select id="deliveryType">
+                    <option value="STANDARD">Standard</option>
+                    <option value="EXPRESS">Express</option>
+                    <option value="SCHEDULED">Scheduled</option>
+                </select>
+            </div>
+
+            <div class="field hidden" id="scheduleField">
+                <label for="scheduledTime">
+                    Scheduled Delivery Time *
+                </label>
+                <input type="datetime-local" id="scheduledTime">
+            </div>
+
+            <div class="field">
+                <label for="distance">
+                    Estimated Delivery Distance (km) *
+                </label>
+                <input type="number" id="distance"
+                    min="0.1" step="0.1"
+                    placeholder="Example: 3.5">
+                <small class="muted">
+                    Demo input only. Distance will be calculated
+                    by the delivery system later.
+                </small>
+            </div>
+
+            <div class="summary">
+                <div class="summary-row">
+                    <span>Subtotal</span>
+                    <span id="subtotal">0.00 ILS</span>
+                </div>
+                <div class="summary-row total-row">
+                    <strong>Items Total</strong>
+                    <strong id="total">0.00 ILS</strong>
+                </div>
+            </div>
+
+            <p class="muted fee-note">
+                Delivery fees, discounts and final pricing
+                will be calculated by the backend later.
+            </p>
+
+            <p id="message" class="message" role="status"></p>
+
+            <button id="placeOrderButton" class="checkout-btn">
+                Place Order
+            </button>
+        </aside>
+
+    </div>
+</main>
+
+<footer>© 2026 SAR3A Smart Food Delivery</footer>
+
+<script>
+    // Sample menu for frontend demonstration only.
+    const menu = [
+        { id: 1, name: "Classic Burger", price: 25, emoji: "🍔" },
+        { id: 2, name: "Margherita Pizza", price: 42, emoji: "🍕" },
+        { id: 3, name: "French Fries", price: 10, emoji: "🍟" },
+        { id: 4, name: "Chicken Wrap", price: 22, emoji: "🌯" },
+        { id: 5, name: "Orange Juice", price: 8, emoji: "🍊" },
+        { id: 6, name: "Ice Cream", price: 15, emoji: "🍦" }
+    ];
+
+    const cart = new Map();
+
+    const menuContainer =
+        document.getElementById("menuContainer");
+
+    const cartContainer =
+        document.getElementById("cartContainer");
+
+    const message =
+        document.getElementById("message");
+
+    const deliveryType =
+        document.getElementById("deliveryType");
+
+    function money(amount) {
+        return amount.toFixed(2) + " ILS";
+    }
+
+    function clearMessage() {
+        message.textContent = "";
+        message.className = "message";
+    }
+
+    function showMessage(text, success = false) {
+        message.textContent = text;
+        message.className =
+            success ? "message success" : "message error";
+    }
+
+    function renderMenu() {
+        menuContainer.replaceChildren();
+
+        menu.forEach(item => {
+            const card = document.createElement("article");
+            card.className = "menu-card";
+
+            const emoji = document.createElement("div");
+            emoji.className = "food-emoji";
+            emoji.textContent = item.emoji;
+
+            const name = document.createElement("h3");
+            name.textContent = item.name;
+
+            const price = document.createElement("p");
+            price.className = "item-price";
+            price.textContent = money(item.price);
+
+            const button = document.createElement("button");
+            button.className = "add-btn";
+            button.textContent = "+ Add to Order";
+
+            button.addEventListener("click", () => {
+                const previous = cart.get(item.id) || 0;
+                cart.set(item.id, previous + 1);
+                clearMessage();
+                renderCart();
+            });
+
+            card.append(emoji, name, price, button);
+            menuContainer.appendChild(card);
+        });
+    }
+
+    function changeQuantity(itemId, change) {
+        const current = cart.get(itemId) || 0;
+        const next = current + change;
+
+        if (next <= 0) {
+            cart.delete(itemId);
+        } else {
+            cart.set(itemId, next);
+        }
+
+        clearMessage();
+        renderCart();
+    }
+
+    function calculateSubtotal() {
+        let subtotal = 0;
+
+        cart.forEach((quantity, itemId) => {
+            const item = menu.find(food => food.id === itemId);
+
+            if (item) {
+                subtotal += item.price * quantity;
+            }
+        });
+
+        return subtotal;
+    }
+
+    function renderCart() {
+        cartContainer.replaceChildren();
+
+        if (cart.size === 0) {
+            const empty = document.createElement("p");
+            empty.className = "empty-cart";
+            empty.textContent = "Your cart is empty.";
+            cartContainer.appendChild(empty);
+        }
+
+        cart.forEach((quantity, itemId) => {
+            const item = menu.find(food => food.id === itemId);
+
+            if (!item) return;
+
+            const row = document.createElement("div");
+            row.className = "cart-item";
+
+            const info = document.createElement("div");
+
+            const name = document.createElement("strong");
+            name.textContent = item.name;
+
+            const price = document.createElement("p");
+            price.className = "muted";
+            price.textContent = money(item.price * quantity);
+
+            info.append(name, price);
+
+            const controls = document.createElement("div");
+            controls.className = "quantity-controls";
+
+            const minus = document.createElement("button");
+            minus.textContent = "−";
+            minus.setAttribute(
+                "aria-label", "Remove one " + item.name
+            );
+            minus.addEventListener("click", () =>
+                changeQuantity(itemId, -1));
+
+            const count = document.createElement("span");
+            count.textContent = quantity;
+
+            const plus = document.createElement("button");
+            plus.textContent = "+";
+            plus.setAttribute(
+                "aria-label", "Add one " + item.name
+            );
+            plus.addEventListener("click", () =>
+                changeQuantity(itemId, 1));
+
+            controls.append(minus, count, plus);
+            row.append(info, controls);
+            cartContainer.appendChild(row);
+        });
+
+        const subtotal = calculateSubtotal();
+
+        document.getElementById("subtotal").textContent =
+            money(subtotal);
+
+        document.getElementById("total").textContent =
+            money(subtotal);
+    }
+
+    deliveryType.addEventListener("change", () => {
+        document.getElementById("scheduleField")
+            .classList.toggle(
+                "hidden",
+                deliveryType.value !== "SCHEDULED"
+            );
+        clearMessage();
+    });
+
+    document.getElementById("placeOrderButton")
+        .addEventListener("click", () => {
+
+            clearMessage();
+
+            const address =
+                document.getElementById("deliveryAddress")
+                    .value.trim();
+
+            const distanceText =
+                document.getElementById("distance").value;
+
+            const distance = Number(distanceText);
+
+            const scheduledTime =
+                document.getElementById("scheduledTime").value;
+
+            if (cart.size === 0) {
+                showMessage(
+                    "Please add at least one item to your order."
+                );
+                return;
+            }
+
+            if (!address) {
+                showMessage(
+                    "Please enter your delivery address."
+                );
+                return;
+            }
+
+            if (
+                distanceText.trim() === "" ||
+                !Number.isFinite(distance) ||
+                distance <= 0
+            ) {
+                showMessage(
+                    "Please enter a valid delivery distance."
+                );
+                return;
+            }
+
+            if (deliveryType.value === "SCHEDULED") {
+                if (
+                    !scheduledTime ||
+                    new Date(scheduledTime).getTime() <= Date.now()
+                ) {
+                    showMessage(
+                        "Please choose a future delivery time."
+                    );
+                    return;
+                }
+            }
+
+            const subtotal = calculateSubtotal();
+
+            // No real order is created or saved here.
+            showMessage(
+                "Demo order validated! Items total: " +
+                money(subtotal) +
+                ". Backend connection is still pending.",
+                true
+            );
+        });
+
+    renderMenu();
+    renderCart();
+</script>
+
+</body>
+</html>

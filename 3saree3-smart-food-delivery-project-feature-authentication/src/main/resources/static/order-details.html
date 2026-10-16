@@ -1,0 +1,268 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAR3A | Order Details</title>
+    <link rel="stylesheet" href="order-details.css">
+</head>
+<body>
+
+<header class="topbar">
+    <a class="logo" href="customer-dashboard.html">
+        SAR<span>3A</span>
+    </a>
+
+    <nav>
+        <a href="customer-dashboard.html">Dashboard</a>
+        <a href="place-order.html">Place Order</a>
+    </nav>
+</header>
+
+<main class="container">
+
+    <div class="page-heading">
+        <div>
+            <p class="eyebrow">CUSTOMER PORTAL</p>
+            <h1>Order Details & Tracking</h1>
+            <p class="subtitle">
+                View your order information and delivery progress.
+            </p>
+        </div>
+        <a class="back-btn" href="customer-dashboard.html">
+            ← Back to Dashboard
+        </a>
+    </div>
+
+    <div class="demo-note">
+        Demo preview — order information is sample data.
+        Java and database integration will be added later.
+    </div>
+
+    <div class="order-selector">
+        <label for="orderSelect">Select an Order</label>
+        <select id="orderSelect">
+            <option value="SAR-1001">SAR-1001</option>
+            <option value="SAR-1002">SAR-1002</option>
+            <option value="SAR-1003">SAR-1003</option>
+        </select>
+    </div>
+
+    <section class="summary-card">
+        <div>
+            <p class="small-label">ORDER NUMBER</p>
+            <h2 id="orderNumber">SAR-1001</h2>
+            <p id="orderDescription">Burger + Fries</p>
+        </div>
+        <span id="statusBadge" class="status pending">PENDING</span>
+    </section>
+
+    <div class="content-grid">
+
+        <section class="card">
+            <h3>Order Information</h3>
+
+            <div class="info-row">
+                <span>Order Type</span>
+                <strong id="orderType">STANDARD</strong>
+            </div>
+
+            <div class="info-row">
+                <span>Order Status</span>
+                <strong id="orderStatus">PENDING</strong>
+            </div>
+
+            <div class="info-row">
+                <span>Order ID</span>
+                <strong id="orderId">SAR-1001</strong>
+            </div>
+
+            <div class="info-row">
+                <span>Payment</span>
+                <strong>Not connected</strong>
+            </div>
+        </section>
+
+        <section class="card">
+            <h3>Order Items</h3>
+            <div id="itemsContainer"></div>
+
+            <div class="total-row">
+                <span>Items Total</span>
+                <strong id="totalPrice">0.00 ILS</strong>
+            </div>
+
+            <p class="price-note">
+                Delivery fees are not included in this demo.
+            </p>
+        </section>
+
+    </div>
+
+    <section class="card tracking-card">
+        <h3>Track Your Order</h3>
+        <p class="tracking-subtitle">
+            Follow the progress of your order.
+        </p>
+
+        <div id="trackingSteps" class="tracking-steps"></div>
+    </section>
+
+</main>
+
+<footer>
+    © 2026 SAR3A Smart Food Delivery
+</footer>
+
+<script>
+    const orders = {
+        "SAR-1001": {
+            id: "SAR-1001",
+            description: "Burger + Fries",
+            type: "STANDARD",
+            status: "PENDING",
+            items: [
+                { name: "Burger", quantity: 1, price: 25 },
+                { name: "Fries", quantity: 1, price: 10 }
+            ]
+        },
+        "SAR-1002": {
+            id: "SAR-1002",
+            description: "Pizza",
+            type: "EXPRESS",
+            status: "DELIVERED",
+            items: [
+                { name: "Pizza", quantity: 1, price: 42 }
+            ]
+        },
+        "SAR-1003": {
+            id: "SAR-1003",
+            description: "Wrap + Juice",
+            type: "SCHEDULED",
+            status: "PREPARING",
+            items: [
+                { name: "Wrap", quantity: 1, price: 22 },
+                { name: "Orange Juice", quantity: 1, price: 8 }
+            ]
+        }
+    };
+
+    const stages = [
+        "PENDING",
+        "CONFIRMED",
+        "PREPARING",
+        "READY",
+        "OUT_FOR_DELIVERY",
+        "DELIVERED"
+    ];
+
+    function formatStatus(status) {
+        return status.replaceAll("_", " ");
+    }
+
+    function renderOrder(orderId) {
+        const order = orders[orderId];
+
+        if (!order) {
+            return;
+        }
+
+        document.getElementById("orderNumber").textContent = order.id;
+        document.getElementById("orderDescription").textContent =
+            order.description;
+        document.getElementById("orderType").textContent = order.type;
+        document.getElementById("orderStatus").textContent =
+            formatStatus(order.status);
+        document.getElementById("orderId").textContent = order.id;
+
+        const badge = document.getElementById("statusBadge");
+        badge.textContent = formatStatus(order.status);
+        badge.className = "status " + order.status.toLowerCase();
+
+        const itemsContainer = document.getElementById("itemsContainer");
+        itemsContainer.innerHTML = "";
+
+        let total = 0;
+
+        order.items.forEach(item => {
+            const subtotal = item.quantity * item.price;
+            total += subtotal;
+
+            const row = document.createElement("div");
+            row.className = "item-row";
+
+            const itemName = document.createElement("span");
+            itemName.textContent =
+                item.name + " × " + item.quantity;
+
+            const itemPrice = document.createElement("strong");
+            itemPrice.textContent = subtotal.toFixed(2) + " ILS";
+
+            row.appendChild(itemName);
+            row.appendChild(itemPrice);
+            itemsContainer.appendChild(row);
+        });
+
+        document.getElementById("totalPrice").textContent =
+            total.toFixed(2) + " ILS";
+
+        renderTracking(order.status);
+    }
+
+    function renderTracking(status) {
+        const container = document.getElementById("trackingSteps");
+        container.innerHTML = "";
+
+        if (status === "CANCELLED") {
+            const message = document.createElement("p");
+            message.className = "cancelled-message";
+            message.textContent =
+                "This order was cancelled before preparation.";
+            container.appendChild(message);
+            return;
+        }
+
+        const currentIndex = stages.indexOf(status);
+
+        stages.forEach((stage, index) => {
+            const step = document.createElement("div");
+            step.className = "tracking-step";
+
+            if (index < currentIndex) {
+                step.classList.add("completed");
+            } else if (index === currentIndex) {
+                step.classList.add("current");
+            }
+
+            const circle = document.createElement("div");
+            circle.className = "step-circle";
+            circle.textContent = index < currentIndex ? "✓" : index + 1;
+
+            const label = document.createElement("span");
+            label.textContent = formatStatus(stage);
+
+            step.appendChild(circle);
+            step.appendChild(label);
+            container.appendChild(step);
+        });
+    }
+
+    const selector = document.getElementById("orderSelect");
+
+    selector.addEventListener("change", function () {
+        renderOrder(this.value);
+    });
+
+    const params = new URLSearchParams(window.location.search);
+    const requestedId = params.get("id");
+
+    if (requestedId && orders[requestedId]) {
+        selector.value = requestedId;
+    }
+
+    renderOrder(selector.value);
+</script>
+
+</body>
+</html>
